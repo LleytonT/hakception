@@ -22,22 +22,21 @@ export interface Database {
     Tables: {
       projects: {
         Row: {
-          id: string;
-          devpost_url: string | null;
+          id: number;
+          created_at: string;
           name: string;
-          tagline: string | null;
           description: string | null;
-          repo_url: string | null;
-          language: string | null;
-          technologies: string[] | null;
-          readme_content: string | null;
-          key_files: Record<string, string> | null;
-          install_cmd: string | null;
-          run_cmd: string | null;
-          has_repo: boolean | null;
-          verified_runs: boolean | null;
+          github_urls: string | null;
+          devpost_url: string | null;
+          readme: string | null;
+          embeddings: unknown | null;
+          is_winner: boolean | null;
+          desc_meta: string | null;
         };
-        Insert: Omit<Database["public"]["Tables"]["projects"]["Row"], "id">;
+        Insert: Omit<
+          Database["public"]["Tables"]["projects"]["Row"],
+          "id" | "created_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["projects"]["Row"]>;
       };
       hackathons: {
@@ -90,7 +89,7 @@ export interface Database {
           agent_number: number;
           personality: string;
           status: AgentRunStatus;
-          selected_project_id: string | null;
+          selected_project_id: number | null;
           selected_sponsor_id: string | null;
           extension_plan: string | null;
           code_changes: Record<string, string> | null;

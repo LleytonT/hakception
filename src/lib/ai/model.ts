@@ -1,18 +1,19 @@
-import { createMistral } from "@ai-sdk/mistral";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
+import { gateway } from "@ai-sdk/gateway";
 
-// Primary: Mistral
-const mistral = createMistral();
-export const primaryModel = mistral("mistral-large-latest");
+// All models accessed through Vercel AI Gateway with a single API key.
+// Gateway handles routing, rate limits, and failover.
+
+// Primary: Mistral (fast, cost-effective for agent tool loops)
+export const primaryModel = gateway("mistral/mistral-large-latest");
 
 // Failover: Anthropic Claude
-const anthropic = createAnthropic();
-export const failoverModel = anthropic("claude-sonnet-4-20250514");
+export const failoverModel = gateway("anthropic/claude-sonnet-4-20250514");
 
 // Failover 2: OpenAI
-const openai = createOpenAI();
-export const fallbackModel = openai("gpt-4o");
+export const fallbackModel = gateway("openai/gpt-4o");
 
 // Default model used by agents
 export const agentModel = primaryModel;
+
+// Judge model (needs strong reasoning for evaluation)
+export const judgeModel = gateway("anthropic/claude-sonnet-4-20250514");
