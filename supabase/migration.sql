@@ -35,6 +35,20 @@ create table if not exists tournaments (
 );
 create index if not exists tournaments_hackathon_id_idx on tournaments(hackathon_id);
 
+-- Candidate projects considered in a tournament
+create table if not exists tournament_projects (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references tournaments(id) on delete cascade,
+  project_id bigint not null references public.projects(id),
+  source text not null default 'embedding'
+    check (source in ('embedding', 'manual', 'seed')),
+  similarity_score double precision,
+  created_at timestamptz not null default now(),
+  unique (tournament_id, project_id)
+);
+create index if not exists tournament_projects_tournament_id_idx on tournament_projects(tournament_id);
+create index if not exists tournament_projects_project_id_idx on tournament_projects(project_id);
+
 -- Agent Runs
 create table if not exists agent_runs (
   id uuid primary key default gen_random_uuid(),
@@ -43,21 +57,33 @@ create table if not exists agent_runs (
   personality text not null,
   status text not null default 'pending'
     check (status in ('pending', 'selecting', 'researching', 'planning', 'coding', 'testing', 'completed', 'failed')),
-  selected_project_id uuid,
+  selected_project_id bigint references public.projects(id),
   selected_sponsor_id uuid references sponsors(id),
   extension_plan text,
   code_changes jsonb,
   sandbox_id text,
   sandbox_result jsonb,
   score jsonb,
-  error text
+  error text,
+  unique (tournament_id, agent_number)
 );
 create index if not exists agent_runs_tournament_id_idx on agent_runs(tournament_id);
+create index if not exists agent_runs_selected_project_id_idx on agent_runs(selected_project_id);
+create index if not exists agent_runs_selected_sponsor_id_idx on agent_runs(selected_sponsor_id);
 
 -- Add FK from tournaments.winner_agent_run_id -> agent_runs after agent_runs exists
-alter table tournaments
-  add constraint tournaments_winner_fk
-  foreign key (winner_agent_run_id) references agent_runs(id);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tournaments_winner_fk'
+  ) then
+    alter table tournaments
+      add constraint tournaments_winner_fk
+      foreign key (winner_agent_run_id) references agent_runs(id);
+  end if;
+end $$;
 
 -- Agent Steps
 create table if not exists agent_steps (
@@ -75,6 +101,47 @@ create table if not exists agent_steps (
 create index if not exists agent_steps_agent_run_id_idx on agent_steps(agent_run_id);
 
 -- Enable Realtime on tables that the dashboard subscribes to
-alter publication supabase_realtime add table tournaments;
-alter publication supabase_realtime add table agent_runs;
-alter publication supabase_realtime add table agent_steps;
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'tournaments'
+    ) then
+      alter publication supabase_realtime add table tournaments;
+    end if;
+
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'tournament_projects'
+    ) then
+      alter publication supabase_realtime add table tournament_projects;
+    end if;
+
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'agent_runs'
+    ) then
+      alter publication supabase_realtime add table agent_runs;
+    end if;
+
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'agent_steps'
+    ) then
+      alter publication supabase_realtime add table agent_steps;
+    end if;
+  end if;
+end $$;
