@@ -18,10 +18,10 @@ export default function Home() {
         Watch them strategize, code, and test — live.
       </p>
       <Link
-        href="/hackathons"
+        href="/tournaments/new"
         className="border border-accent text-accent px-6 py-3 hover:bg-accent hover:text-background transition-colors font-mono"
       >
-        {">"} Enter
+        {">"} Launch Tournament
       </Link>
     </div>
   );

@@ -8,16 +8,7 @@ export async function agentRunWorkflow(
 ): Promise<AgentResult> {
   "use workflow";
 
-  const result = await executeAgentRun(
-    agentRunId,
-    tournamentId,
-    hackathonId,
-    agentNumber
-  );
-
-  await updateTournamentStatus(tournamentId, agentRunId, result);
-
-  return result;
+  return executeAgentRun(agentRunId, tournamentId, hackathonId, agentNumber);
 }
 
 async function executeAgentRun(
@@ -38,24 +29,4 @@ async function executeAgentRun(
   };
 
   return runAgent(ctx);
-}
-
-async function updateTournamentStatus(
-  tournamentId: string,
-  agentRunId: string,
-  result: AgentResult
-): Promise<void> {
-  "use step";
-
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const supabase = createAdminClient();
-
-  await supabase
-    .from("tournaments")
-    .update({
-      status: result.success ? "completed" : ("failed" as const),
-      completed_at: new Date().toISOString(),
-      ...(result.success ? { winner_agent_run_id: agentRunId } : {}),
-    })
-    .eq("id", tournamentId);
 }
