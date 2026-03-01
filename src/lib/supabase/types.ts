@@ -10,8 +10,6 @@ export type AgentRunStatus =
   | "selecting"
   | "researching"
   | "planning"
-  | "coding"
-  | "testing"
   | "completed"
   | "failed";
 

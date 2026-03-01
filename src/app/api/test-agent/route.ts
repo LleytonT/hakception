@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { start } from "workflow/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPersonality } from "@/lib/ai/personalities";
-import { runAgent } from "@/lib/ai/agent";
+import { agentRunWorkflow } from "@/lib/workflows/agent-run";
 import type { Tournament, AgentRun } from "@/lib/supabase/types";
-
-export const maxDuration = 300; // 5 minute timeout
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -58,29 +57,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Run agent directly (not via workflow — for local testing)
-  const result = await runAgent({
-    agentRunId: agentRun.id,
-    tournamentId: tournament.id,
-    hackathonId: hackathon_id,
-    agentNumber: agent_number,
-  });
-
-  // Update tournament status
-  await supabase
-    .from("tournaments")
-    .update({
-      status: result.success
-        ? ("completed" as const)
-        : ("failed" as const),
-      completed_at: new Date().toISOString(),
-      ...(result.success ? { winner_agent_run_id: agentRun.id } : {}),
-    })
-    .eq("id", tournament.id);
+  // Start workflow (fire-and-forget — returns immediately)
+  const run = await start(agentRunWorkflow, [
+    agentRun.id,
+    tournament.id,
+    hackathon_id,
+    agent_number,
+  ]);
 
   return NextResponse.json({
     tournament_id: tournament.id,
     agent_run_id: agentRun.id,
-    result,
+    workflow_run_id: run.runId,
   });
 }
