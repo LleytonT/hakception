@@ -26,18 +26,25 @@ export interface Database {
           created_at: string;
           name: string;
           description: string | null;
-          github_urls: string | null;
+          github_urls: string[];
           devpost_url: string | null;
           readme: string | null;
           embeddings: unknown | null;
           is_winner: boolean | null;
           desc_meta: string | null;
         };
-        Insert: Omit<
-          Database["public"]["Tables"]["projects"]["Row"],
-          "id" | "created_at"
-        >;
+        Insert: {
+          name: string;
+          description?: string | null;
+          github_urls?: string[];
+          devpost_url?: string | null;
+          readme?: string | null;
+          embeddings?: unknown | null;
+          is_winner?: boolean | null;
+          desc_meta?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["projects"]["Row"]>;
+        Relationships: [];
       };
       hackathons: {
         Row: {
@@ -46,11 +53,12 @@ export interface Database {
           description: string | null;
           created_at: string;
         };
-        Insert: Omit<
-          Database["public"]["Tables"]["hackathons"]["Row"],
-          "id" | "created_at"
-        >;
+        Insert: {
+          name: string;
+          description?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["hackathons"]["Row"]>;
+        Relationships: [];
       };
       sponsors: {
         Row: {
@@ -62,11 +70,15 @@ export interface Database {
           cached_docs: string | null;
           created_at: string;
         };
-        Insert: Omit<
-          Database["public"]["Tables"]["sponsors"]["Row"],
-          "id" | "created_at"
-        >;
+        Insert: {
+          hackathon_id: string;
+          name: string;
+          description?: string | null;
+          doc_urls?: string[];
+          cached_docs?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["sponsors"]["Row"]>;
+        Relationships: [];
       };
       tournaments: {
         Row: {
@@ -79,8 +91,17 @@ export interface Database {
           completed_at: string | null;
           winner_agent_run_id: string | null;
         };
-        Insert: Omit<Database["public"]["Tables"]["tournaments"]["Row"], "id">;
+        Insert: {
+          hackathon_id: string;
+          status?: TournamentStatus;
+          agent_count?: number;
+          config?: Record<string, unknown> | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          winner_agent_run_id?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["tournaments"]["Row"]>;
+        Relationships: [];
       };
       agent_runs: {
         Row: {
@@ -98,8 +119,42 @@ export interface Database {
           score: Record<string, unknown> | null;
           error: string | null;
         };
-        Insert: Omit<Database["public"]["Tables"]["agent_runs"]["Row"], "id">;
+        Insert: {
+          tournament_id: string;
+          agent_number: number;
+          personality: string;
+          status?: AgentRunStatus;
+          selected_project_id?: number | null;
+          selected_sponsor_id?: string | null;
+          extension_plan?: string | null;
+          code_changes?: Record<string, string> | null;
+          sandbox_id?: string | null;
+          sandbox_result?: Record<string, unknown> | null;
+          score?: Record<string, unknown> | null;
+          error?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["agent_runs"]["Row"]>;
+        Relationships: [];
+      };
+      tournament_projects: {
+        Row: {
+          id: string;
+          tournament_id: string;
+          project_id: number;
+          source: "embedding" | "manual" | "seed";
+          similarity_score: number | null;
+          created_at: string;
+        };
+        Insert: {
+          tournament_id: string;
+          project_id: number;
+          source?: "embedding" | "manual" | "seed";
+          similarity_score?: number | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["tournament_projects"]["Row"]
+        >;
+        Relationships: [];
       };
       agent_steps: {
         Row: {
@@ -111,13 +166,38 @@ export interface Database {
           input: Record<string, unknown> | null;
           output: Record<string, unknown> | null;
           duration_ms: number | null;
+          created_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["agent_steps"]["Row"], "id">;
+        Insert: {
+          agent_run_id: string;
+          step_number: number;
+          step_type: AgentStepType;
+          tool_name?: string | null;
+          input?: Record<string, unknown> | null;
+          output?: Record<string, unknown> | null;
+          duration_ms?: number | null;
+        };
         Update: Partial<Database["public"]["Tables"]["agent_steps"]["Row"]>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      match_projects: {
+        Args: {
+          query_embedding: number[];
+          match_count: number;
+          similarity_threshold: number;
+        };
+        Returns: {
+          id: number;
+          name: string;
+          description: string | null;
+          github_urls: string[];
+          similarity: number;
+        }[];
+      };
+    };
     Enums: Record<string, never>;
   };
 }
@@ -129,3 +209,5 @@ export type Sponsor = Database["public"]["Tables"]["sponsors"]["Row"];
 export type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
 export type AgentRun = Database["public"]["Tables"]["agent_runs"]["Row"];
 export type AgentStep = Database["public"]["Tables"]["agent_steps"]["Row"];
+export type TournamentProject =
+  Database["public"]["Tables"]["tournament_projects"]["Row"];

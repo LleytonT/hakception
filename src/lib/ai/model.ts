@@ -4,10 +4,10 @@ import { gateway } from "@ai-sdk/gateway";
 // Gateway handles routing, rate limits, and failover.
 
 // Primary: Mistral (fast, cost-effective for agent tool loops)
-export const primaryModel = gateway("mistral/mistral-large-latest");
+export const primaryModel = gateway("mistral/mistral-large-3");
 
 // Failover: Anthropic Claude
-export const failoverModel = gateway("anthropic/claude-sonnet-4-20250514");
+export const failoverModel = gateway("anthropic/claude-sonnet-4");
 
 // Failover 2: OpenAI
 export const fallbackModel = gateway("openai/gpt-4o");
@@ -16,4 +16,7 @@ export const fallbackModel = gateway("openai/gpt-4o");
 export const agentModel = primaryModel;
 
 // Judge model (needs strong reasoning for evaluation)
-export const judgeModel = gateway("anthropic/claude-sonnet-4-20250514");
+export const judgeModel = gateway("anthropic/claude-sonnet-4");
+
+// Embedding model (must match what was used to embed the projects table)
+export const embeddingModel = gateway.embeddingModel("mistral/mistral-embed");
