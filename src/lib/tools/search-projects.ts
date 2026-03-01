@@ -3,6 +3,57 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embeddingModel } from "@/lib/ai/model";
 
+export interface SearchProjectItem {
+  id: number;
+  name: string | null;
+  description: string | null;
+  github_url: string | null;
+  similarity: number;
+}
+
+export interface SearchProjectsResult {
+  projects: SearchProjectItem[];
+  count: number;
+}
+
+export async function runProjectSearch(
+  query: string,
+  limit = 10,
+  similarity_threshold = 0.3
+): Promise<SearchProjectsResult> {
+  const { embedding } = await embed({
+    model: embeddingModel,
+    value: query,
+  });
+
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase.rpc("match_projects", {
+    query_embedding: embedding,
+    match_count: limit,
+    similarity_threshold,
+  });
+
+  if (error) {
+    throw new Error(`search_projects failed: ${error.message}`);
+  }
+
+  const projects = (data ?? [])
+    .filter((project) => Array.isArray(project.github_urls) && project.github_urls.length > 0)
+    .map((project) => ({
+      id: project.id,
+      name: project.name,
+      description: project.description ? project.description.slice(0, 300) : null,
+      github_url: project.github_urls[0],
+      similarity: project.similarity,
+    }));
+
+  return {
+    projects,
+    count: projects.length,
+  };
+}
+
 export const searchProjects = tool({
   description:
     "Search hackathon projects using semantic similarity. Describe what kind of project " +
@@ -30,37 +81,6 @@ export const searchProjects = tool({
       ),
   }),
   execute: async ({ query, limit, similarity_threshold }) => {
-    // Generate embedding for the query via AI Gateway
-    const { embedding } = await embed({
-      model: embeddingModel,
-      value: query,
-    });
-
-    // Call the match_projects RPC (pgvector cosine similarity search)
-    const supabase = createAdminClient();
-
-    const { data, error } = await supabase.rpc("match_projects", {
-      query_embedding: embedding,
-      match_count: limit,
-      similarity_threshold,
-    });
-
-    if (error) throw new Error(`search_projects failed: ${error.message}`);
-
-    // Filter to only projects with at least one GitHub URL
-    const projects = (data ?? [])
-      .filter((p) => Array.isArray(p.github_urls) && p.github_urls.length > 0)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description ? p.description.slice(0, 300) : null,
-        github_url: p.github_urls[0],
-        similarity: p.similarity,
-      }));
-
-    return {
-      projects,
-      count: projects.length,
-    };
+    return runProjectSearch(query, limit, similarity_threshold);
   },
 });
