@@ -7,6 +7,7 @@ import { getProjectDetails } from "@/lib/tools/get-project-details";
 import { fetchSponsorDocs } from "@/lib/tools/fetch-sponsor-docs";
 import { submitPlan } from "@/lib/tools/submit-plan";
 import type { AgentRunStatus } from "@/lib/supabase/types";
+import { recordTournamentProgress } from "@/lib/progress-store";
 
 export interface AgentContext {
   agentRunId: string;
@@ -21,6 +22,28 @@ export interface AgentResult {
   selectedProjectId: number | null;
   selectedSponsorId: string | null;
   error?: string;
+}
+
+function recordLiveProgress(params: {
+  tournamentId: string;
+  agentRunId: string;
+  stepNumber: number;
+  stepType: "tool_call" | "llm_response" | "error";
+  toolName?: string | null;
+  output?: Record<string, unknown> | null;
+}) {
+  recordTournamentProgress({
+    tournamentId: params.tournamentId,
+    entry: {
+      id: crypto.randomUUID(),
+      agentRunId: params.agentRunId,
+      stepNumber: params.stepNumber,
+      stepType: params.stepType,
+      toolName: params.toolName ?? null,
+      output: params.output ?? null,
+      createdAt: new Date().toISOString(),
+    },
+  });
 }
 
 function updateAgentStatus(
@@ -127,6 +150,14 @@ ${sponsorList}
         try {
           const toolName = toolCall.toolName;
           console.log(`[agent] tool start: ${toolName}`);
+          recordLiveProgress({
+            tournamentId: ctx.tournamentId,
+            agentRunId: ctx.agentRunId,
+            stepNumber: stepCounter + 1,
+            stepType: "tool_call",
+            toolName,
+            output: { state: "running" },
+          });
           if (
             toolName === "search_projects" ||
             toolName === "get_project_details"
@@ -186,6 +217,15 @@ ${sponsorList}
             output: outputForLog,
             durationMs: event.durationMs,
           });
+
+          recordLiveProgress({
+            tournamentId: ctx.tournamentId,
+            agentRunId: ctx.agentRunId,
+            stepNumber: stepCounter,
+            stepType: success ? "tool_call" : "error",
+            toolName,
+            output: outputForLog,
+          });
         } catch (err) {
           console.error("[agent] onToolCallFinish error:", err);
         }
@@ -196,6 +236,14 @@ ${sponsorList}
           if (stepResult.text) {
             stepCounter++;
             logStep({
+              agentRunId: ctx.agentRunId,
+              stepNumber: stepCounter,
+              stepType: "llm_response",
+              output: { text: stepResult.text.slice(0, 2000) },
+            });
+
+            recordLiveProgress({
+              tournamentId: ctx.tournamentId,
               agentRunId: ctx.agentRunId,
               stepNumber: stepCounter,
               stepType: "llm_response",

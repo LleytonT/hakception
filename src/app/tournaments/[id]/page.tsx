@@ -33,7 +33,7 @@ export default async function TournamentPage({ params }: TournamentPageProps) {
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 sm:p-10">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto w-full max-w-425 space-y-6">
         <TournamentHeader
           tournament={tournament}
           hackathon={hackathon}

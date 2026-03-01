@@ -3,11 +3,11 @@
 import type { AgentRunStatus, TournamentStatus } from "@/lib/supabase/types";
 
 const agentColors: Record<AgentRunStatus, string> = {
-  pending: "border-muted text-muted",
-  selecting: "border-accent-dim text-accent-dim",
-  researching: "border-accent-dim text-accent-dim",
-  planning: "border-accent-dim text-accent-dim",
-  completed: "border-accent text-accent",
+  pending: "border-yellow-500/60 text-yellow-300",
+  selecting: "border-blue-500/60 text-blue-300",
+  researching: "border-blue-500/60 text-blue-300",
+  planning: "border-blue-500/60 text-blue-300",
+  completed: "border-green-500/60 text-green-300",
   failed: "border-red-500 text-red-400",
 };
 
